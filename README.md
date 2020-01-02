@@ -3,7 +3,7 @@
 テキストレイヤーを部首などの、形状がが離れているグループごとに分割し、新しくレイヤーを作成します。
 
 γしめぢ@gummasimediさんによるGG分解が面白そうだったので、自分でも作ってみました。
-<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">「GG 文解」というテキストをシェイプにするスクリプトを作成しました。<br>構造分解や一括変換、プリコンポーズ等に対応しています。<a href="https://twitter.com/hashtag/AfterEffects?src=hash&amp;ref_src=twsrc%5Etfw">#AfterEffects</a><a href="https://t.co/tVNU5LnYPK">https://t.co/tVNU5LnYPK</a> <a href="https://t.co/4plobITY0g">pic.twitter.com/4plobITY0g</a></p>&mdash; γしめぢ (@gummasimedi) <a href="https://twitter.com/gummasimedi/status/1190626096036773888?ref_src=twsrc%5Etfw">November 2, 2019</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<blockquote class="twitter-tweet"><p lang="ja" dir="ltr">「GG 文解」というテキストをシェイプにするスクリプトを作成しました。<br>構造分解や一括変換、プリコンポーズ等に対応しています。<a href="https://twitter.com/hashtag/AfterEffects?src=hash&amp;ref_src=twsrc%5Etfw">#AfterEffects</a><a href="https://t.co/tVNU5LnYPK">https://t.co/tVNU5LnYPK</a> <a href="https://t.co/4plobITY0g">pic.twitter.com/4plobITY0g</a></p>&mdash; γしめぢ (@gummasimedi) <a href="https://twitter.com/gummasimedi/status/1190626096036773888?ref_src=twsrc%5Etfw">November 2, 2019</a></blockquote>
 
 
 ## 参考
