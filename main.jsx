@@ -2,8 +2,6 @@
     #include './lib/radicalSplitter.jsxinc'
 
     var comp = app.project.activeItem;
-    var shapeLayer = comp.layer(1);
-    var root = shapeLayer.property('ADBE Root Vectors Group');
 
     if (comp === null
         || !(comp instanceof CompItem)) {
