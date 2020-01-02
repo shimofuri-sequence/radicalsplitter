@@ -1,0 +1,229 @@
+﻿
+#include 'pointInArea.jsxinc'
+#include 'util.jsxinc'
+
+// 面積でソートするフィルタ
+function sortFilterBySimpleArea(a, b) {
+    var area_a = area(simple_bounds(a.property('ADBE Vector Shape').value.vertices));
+    var area_b = area(simple_bounds(b.property('ADBE Vector Shape').value.vertices));
+    if (area_a < area_b) return -1;
+    if (area_a > area_b) return 1;
+    return 0;
+}
+
+function findHoleShape(group) {
+    var hole_data = [];
+    var fill_data = [];
+
+    // 穴のパスとそうでないパスを振り分ける
+    var contents = group.property('ADBE Vectors Group');
+    for (var i = 1; i <= contents.numProperties; i++) {
+        var prop = contents.property(i);
+        if (isVectorShape(prop)) {
+            var shape = prop.property('ADBE Vector Shape');
+            var vertices = shape.value.vertices
+            var vertex = isCrockWise(vertices);
+
+            if (!vertex) {
+                hole_data.push(prop)
+            } else {
+                fill_data.push(prop)
+            }
+        }
+    }
+
+    var result = {
+        hole_shapes: hole_data,
+        fill_shapes: fill_data,
+    }
+
+    return result;
+}
+
+
+// simplifyを有効にすると、verticesを単純な矩形として計算する
+function findParentShape(hole_shape, fill_data, simplify) {
+    simplify = simplify || false;
+
+    var layer = getLayerFromProperty(hole_shape);
+    var layer_bounds = layer.sourceRectAtTime(layer.inPoint, true);
+    var origin = [layer_bounds.left, layer_bounds.top];
+
+    var hole_vertices = shiftVertices(hole_shape.property('ADBE Vector Shape').value.vertices, origin);
+    if (simplify) hole_vertices = toBounds(hole_vertices);
+
+    for (var i = 0; i < fill_data.length; i++) {
+        var data = fill_data[i];
+        var fill_shape = data.shape;
+
+        var fill_vertices = shiftVertices(fill_shape.property('ADBE Vector Shape').value.vertices, origin);
+        if (simplify) fill_vertices = toBounds(fill_vertices);
+
+        var include = isInclustion(hole_vertices, fill_vertices);
+        if (include) {
+            return data;
+        }
+    }
+}
+
+function createData(group) {
+    var shape_data = findHoleShape(group);
+
+    //小さい面積のパスから評価するため、配列をコピーしてソートする
+    var tmp_hole_shapes = shape_data.hole_shapes.concat([]);
+    var tmp_fill_shapes = shape_data.fill_shapes.concat([]);
+    tmp_hole_shapes.sort(sortFilterBySimpleArea);
+    tmp_fill_shapes.sort(sortFilterBySimpleArea);
+
+    // 穴のないシェイプに穴のあるシェイプを結び付ける為に新しいデータ型を用意する
+    var fill_data = []
+    for (var i = 0; i < tmp_fill_shapes.length; i++) {
+        fill_data.push({ shape: tmp_fill_shapes[i], children: [] })
+    }
+
+    for (var j = 0; j < tmp_hole_shapes.length; j++) {
+        var hole_shape = tmp_hole_shapes[j];
+        /*
+            穴のパスが穴ではないパスに包まれているかどうかを判別する
+            頂点しか見ていないので、パスが曲がっている場合、判別できない
+            場合がある。その際には単純化した矩形で判別する。
+        */
+        var parent_shape = findParentShape(hole_shape, fill_data);
+        if (parent_shape) {
+            parent_shape.children.push(hole_shape);
+        } else {
+            // 単純化計算
+            parent_shape = findParentShape(hole_shape, fill_data, true);
+            if (parent_shape) {
+                parent_shape.children.push(hole_shape);
+            } else {
+                $.writeln('穴の開いたパスの親が見つからない');
+            }
+        }
+    }
+
+    // シェイプ全体のデータを再構築する
+    var character_data = [];
+    for (var i = 0; i < fill_data.length; i++) {
+        var character = fill_data[i];
+        var children = [];
+        for (var j = 0; j < character.children.length; j++) {
+            var child = character.children[j];
+            children.push(child.propertyIndex);
+        }
+        var data = {
+            shape: character.shape,
+            group_indexes: children,
+        }
+        data.group_indexes.sort();
+        character_data.push(data);
+    }
+
+    return character_data;
+}
+
+// 1文字にする
+function cleanChara(layer, keepIndex) {
+    var vectorGroup = layer.property('ADBE Root Vectors Group');
+    var count = vectorGroup.numProperties;
+    for (var i = count; i > 0; i--) {
+        var group = vectorGroup(i);
+        if (group.propertyIndex !== keepIndex) {
+            group.remove();
+        }
+    }
+}
+
+// 1パーツにする
+function cleanRadical(layer, keepIndexes) {
+    var vectorGroup = layer.property('ADBE Root Vectors Group')
+    var subGroup = vectorGroup.property('ADBE Vector Group').property('ADBE Vectors Group');
+    var count = subGroup.numProperties;
+    for (var i = count; i > 0; i--) {
+        var group = subGroup.property(i);
+        if (isVectorShape(group)
+            && !indexOf(keepIndexes, group.propertyIndex)) {
+            group.remove();
+        }
+    }
+}
+
+function splitter(group) {
+    var created_data = createData(group);
+    var splited_data = [];
+    for (var i = 0; i < created_data.length; i++) {
+        var data = created_data[i];
+        var chara_index = data.shape.propertyIndex;
+        var radical_indexes = data.group_indexes;
+        var keep_indexes = radical_indexes.concat([]); //配列をコピー
+        keep_indexes.push(chara_index);
+
+        var radical_layer = shapeLayer.duplicate();
+        cleanChara(radical_layer, group.propertyIndex);
+        cleanRadical(radical_layer, keep_indexes);
+
+        radical_layer.name = group.name;
+
+        splited_data.push(radical_layer);
+    }
+
+    return splited_data;
+}
+
+function alignShape(layer) {
+    var comp = layer.containingComp;
+    var origin_anchor = layer.anchorPoint.value.slice(0, 2);
+    var ratio_x = layer.scale.value[0] / 100;
+    var ratio_y = layer.scale.value[1] / 100;
+
+    var vectorGroup = layer.property('ADBE Root Vectors Group');
+    // vectorGroup(1)(3)(1)はシェイプのアンカーポイント
+    var shape_anchor = vectorGroup(1)(3)(1).value;
+    vectorGroup(1)(3)(1).setValue(origin_anchor);
+    var bounds = layer.sourceRectAtTime(layer.inPoint, true);
+
+    var actual_width = bounds.left * ratio_x;
+    var actual_height = bounds.top * ratio_y;
+
+    var width = bounds.width * ratio_x;
+    var height = bounds.height * ratio_y;
+
+    var a_x = bounds.width / 2 + bounds.left;
+    var a_y = bounds.height / 2 + bounds.top;
+    var center = [a_x, a_y];
+
+    vectorGroup(1)(3)(1).setValue(shape_anchor);
+
+    // 回転していない位置
+    var p_x = actual_width + width / 2;
+    var p_y = actual_height + height / 2;
+
+    var r = layer.rotationZ.value * (Math.PI / 180);
+    var n_x = p_x * Math.cos(r) - p_y * Math.sin(r) + layer.position.value[0];
+    var n_y = p_x * Math.sin(r) + p_y * Math.cos(r) + layer.position.value[1];
+
+    layer.anchorPoint.setValue(center)
+    layer.position.setValue([n_x, n_y]);
+}
+
+function radicalSplitter(shapeLayer) {
+    var vectorGroup = shapeLayer.property('ADBE Root Vectors Group');
+
+    var characters = getCharacters(vectorGroup);
+    var layers = [];
+    var label = shapeLayer.label;
+
+    for (var i = 0; i < characters.length; i++) {
+        var character = characters[i];
+        var split = splitter(character);
+        for (var j = 0; j < split.length; j++) {
+            var split_layer = split[j];
+            layers.push(split_layer);
+            alignShape(split_layer);
+            split_layer.label = i % 16 + 1;
+        }
+    }
+
+    shapeLayer.label = label;
+    return layers;
+}

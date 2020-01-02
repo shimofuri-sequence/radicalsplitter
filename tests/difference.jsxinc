@@ -1,0 +1,23 @@
+
+function test_difference(layer_a, layer_b) {
+    var comp = layer_a.containingComp;
+
+    var solid = layer_a.source.layers.addSolid([1, 1, 1], 'bg', comp.width, comp.height, comp.duration);
+    solid.moveToEnd();
+    var solid2 = layer_b.source.layers.add(solid.source);
+    solid2.moveToEnd();
+
+    layer_a.blendingMode = BlendingMode.DIFFERENCE;
+
+    var adjustment = comp.layers.add(solid.source);
+    adjustment.adjustmentLayer = true;
+    adjustment.name = 'adjustment'
+
+    var result = comp.layers.addText();
+    var expression = 'var target = thisComp.layer("adjustment");\n';
+    expression += 'target.sampleImage([width / 2 + .5, height / 2 + .5], [width / 2, height / 2], true).slice(0,3)';
+
+    result.sourceText.expression = expression;
+
+    return result.sourceText.value.toString();
+}

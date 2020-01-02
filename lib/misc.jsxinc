@@ -1,0 +1,71 @@
+
+function random_color() {
+    var r = Math.random()
+    var g = Math.random();
+    var b = Math.random();
+    return [r, g, b];
+}
+
+function show_properties(root_property) {
+    var result = '';
+    function _indent(count) {
+        var tab = '';
+        for (var i = 0; i < count; i++) {
+            tab += '    ';
+        }
+        return tab;
+    }
+    function _show(prop, d) {
+        d = d || 0;
+        var depth = prop.propertyDepth;
+        var idx = prop.propertyIndex;
+        var prop_name = prop.matchName;
+        result += _indent(d) + prop.name + '[' + prop_name + ']' + '(depth:' + depth + ' index:' + idx + ')' + '\n';
+        for (var i = 1; i <= prop.numProperties; i++) {
+            var child_prop = prop.property(i);
+            if (child_prop !== PropertyType.PROPERTY) {
+                var indent = d + 1;
+                _show(child_prop, indent);
+            }
+
+        }
+    }
+    _show(root_property);
+    $.writeln(result);
+}
+
+function colorized_outline(layer) {
+    var vectorGroup = layer.property('ADBE Root Vectors Group')
+    var subGroup = vectorGroup.property('ADBE Vector Group').property('ADBE Vectors Group');
+    var count = subGroup.numProperties;
+    for (var i = count; i > 0; i--) {
+        var group = subGroup.property(i);
+
+        if (group.matchName === 'ADBE Vector Graphic - Fill') {
+            group.enabled = false;
+        }
+
+        if (group.matchName === 'ADBE Vector Graphic - Stroke') {
+            group.enabled = true;
+            group(3).setValue(random_color());
+        }
+    }
+}
+
+function draw_point(vertices, comp) {
+    var count = vertices.length;
+    var nullLayer = comp.layers.addNull();
+    nullLayer.scale.setValue([10, 10]);
+    var nullLayers = [nullLayer];
+    nullLayer.name = 0;
+    for (var i = 1; i < count; i++) {
+        var duplicated_nullLayer = nullLayer.duplicate();
+        duplicated_nullLayer.name = i;
+        nullLayers.push(duplicated_nullLayer);
+    }
+    nullLayer.moveToBeginning();
+    for (var i = 0; i < count; i++) {
+        var _nullLayer = nullLayers[i];
+        _nullLayer.position.setValue(vertices[i]);
+    }
+}

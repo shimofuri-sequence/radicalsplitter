@@ -1,0 +1,127 @@
+function dot(a, b) {
+    return a[0] * b[1] - a[1] * b[0];
+}
+
+// 外積を用いて時計回りか反時計回りを判別する
+function isCrockWise(vertices) {
+    var result = 0;
+    var len = vertices.length;
+    for (var i = 0; i < len; i++) {
+        var vertex_a = vertices[i];
+        var vertex_b = vertices[(i + 1) % len];
+        result += dot(vertex_a, vertex_b);
+    }
+    if (result / 2 < 0) return true;
+    return false;
+}
+
+function getCharacters(vectorGroup, characters) {
+    characters = characters || [];
+    for (var i = 1; i <= vectorGroup.numProperties; i++) {
+        var prop = vectorGroup.property(i);
+        if (prop.matchName === 'ADBE Vector Group') {
+            characters.push(prop);
+        }
+        if (prop.propertyType !== PropertyType.Property) {
+            getCharacters(prop);
+        }
+    }
+    return characters;
+}
+
+function simple_bounds(vertices) {
+    var xpos = [];
+    var ypos = [];
+    for (var i = 0; i < vertices.length; i++) {
+        var vertex = vertices[i];
+        xpos.push(vertex[0]);
+        ypos.push(vertex[1]);
+    }
+    var x_min = Math.min.apply(null, xpos);
+    var x_max = Math.max.apply(null, xpos);
+    var y_min = Math.min.apply(null, ypos);
+    var y_max = Math.max.apply(null, ypos);
+
+    return [x_min, y_min, x_max, y_max];
+}
+
+function area(bounds) {
+    var w = bounds[2] - bounds[0];
+    var h = bounds[3] - bounds[1];
+    return w * h;
+}
+
+function shiftVertices(vertices, shift_position) {
+    var new_vertices = [];
+    for (var i = 0; i < vertices.length; i++) {
+        var vertex = vertices[i];
+        var new_vertex = [
+            vertex[0] - shift_position[0],
+            vertex[1] - shift_position[1],
+        ];
+        new_vertices.push(new_vertex);
+    }
+    return new_vertices;
+}
+
+function toBounds(vertices) {
+    var v = simple_bounds(vertices);
+    var new_vertices = [
+        [v[0], v[1]],
+        [v[2], v[1]],
+        [v[2], v[3]],
+        [v[0], v[3]],
+    ]
+    return new_vertices;
+}
+
+function isInclustion(hole_shape_vertices, fill_shape_vertices) {
+    var _isInclustion = null;
+    for (var i = 0; i < hole_shape_vertices.length; i++) {
+        var hole_vertex = hole_shape_vertices[i];
+        var result = isPointInArea(hole_vertex, fill_shape_vertices);
+        if (_isInclustion === null) {
+            _isInclustion = result;
+        } else {
+            _isInclustion = _isInclustion && result;
+        }
+    }
+    return _isInclustion;
+}
+
+// ExtendScriptにはArray.indexOfが無いみたい
+function indexOf(array, value) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i] === value) return true;
+    }
+    return false;
+}
+
+function isVectorShape(group) {
+    if (group.propertyType === PropertyType.NAMED_GROUP
+        && group.numProperties === 2
+        && group.property(2).matchName === 'ADBE Vector Shape') {
+        return true;
+    }
+    return false;
+}
+
+function getShapeGroup(contents_group) {
+    var result = [];
+    for (var i = 1; i <= contents_group.numProperties; i++) {
+        var group = contents_group.property(i);
+        if (isVectorShape(group)) {
+            result.push(group);
+        }
+    }
+    return result;
+}
+
+// プロパティ位置から遡ってレイヤーを得る
+function getLayerFromProperty(prop) {
+    var parentProperty = prop.parentProperty;
+    if (parentProperty == null) {
+        return prop;
+    }
+    return getLayerFromProperty(parentProperty);
+}

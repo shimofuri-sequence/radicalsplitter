@@ -1,0 +1,94 @@
+
+var TEXTLAYER_TO_SHAPELAYER = 3781;
+
+function assert(expected, actual) {
+    $.writeln(expected === actual);
+}
+
+function reset() {
+    app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);
+    app.newProject();
+}
+
+function createShapelayer(text, font) {
+    var comp = app.project.items.addComp('text', 720, 360, 1, 1, 24);
+    comp.openInViewer();
+    var textLayer = comp.layers.addText(text);
+
+    font = font || 'MS UI Gothic';
+    var doc = textLayer.sourceText.value
+    doc.resetCharStyle();
+    doc.fontSize = 64;
+    doc.fillColor = [1, 1, 1];
+    doc.font = font;
+
+    textLayer.sourceText.setValue(doc);
+    textLayer.position.setValue([comp.width / 2, comp.height / 2]);
+
+    app.executeCommand(TEXTLAYER_TO_SHAPELAYER);
+    var shapeLayer = comp.layer(textLayer.index - 1);
+    return shapeLayer;
+}
+
+function createRandomTransform_Shapelayer(text, font) {
+    var comp = app.project.items.addComp('text', 720, 360, 1, 1, 24);
+    comp.openInViewer();
+    var textLayer = comp.layers.addText(text);
+
+    font = font || 'MS UI Gothic';
+    var doc = textLayer.sourceText.value
+    doc.resetCharStyle();
+    doc.fontSize = 64;
+    doc.fillColor = [1, 1, 1];
+    doc.font = font;
+
+    textLayer.sourceText.setValue(doc);
+    textLayer.position.setValue([comp.width / 2, comp.height / 2]);
+
+    var curernt_bounds = textLayer.sourceRectAtTime(0, true);
+
+    var x = Math.random(0, 1) * (comp.width / 2) + comp.width / 4;
+    var y = Math.random(0, 1) * (comp.height / 2) + comp.height / 4;
+    textLayer.position.setValue([x, y]);
+
+    var ax = Math.random(0, 1) * (curernt_bounds.width / 2) - (curernt_bounds.width / 2);
+    var ay = Math.random(0, 1) * (curernt_bounds.height / 2) - (curernt_bounds.height / 2);
+    textLayer.anchorPoint.setValue([ax, ay]);
+
+    var sx = sy = Math.random(0, 0.5) * 10 + 50;
+    textLayer.scale.setValue([sx, sy]);
+
+    textLayer.rotationZ.setValue(Math.random(0, 1) * 90 - 45);
+
+    app.executeCommand(TEXTLAYER_TO_SHAPELAYER);
+    var shapeLayer = comp.layer(textLayer.index - 1);
+    return shapeLayer;
+}
+
+function createShapelayer_fillText(text) {
+    var comp = app.project.items.addComp('text', 800, 520, 1, 1, 24);
+    comp.openInViewer();
+    var textLayer = comp.layers.addText(text);
+
+    font = 'MS UI Gothic';
+    var doc = textLayer.sourceText.value
+    doc.resetCharStyle();
+    doc.fontSize = 56;
+    doc.fillColor = [1, 1, 1];
+    doc.font = font;
+    doc.justification = ParagraphJustification.CENTER_JUSTIFY;
+    doc.baselineShift = -45;
+
+    textLayer.sourceText.setValue(doc);
+    var b = textLayer.sourceRectAtTime(textLayer.inPoint, true);
+
+    comp.width = Math.ceil(b.width) + 20;
+    comp.height = Math.ceil(b.height) + 20;
+
+    textLayer.position.setValue([comp.width / 2, comp.height / 2]);
+    textLayer.anchorPoint.setValue([textLayer.anchorPoint.value[0], b.height / 2]);
+
+    app.executeCommand(TEXTLAYER_TO_SHAPELAYER);
+    var shapeLayer = comp.layer(textLayer.index - 1);
+    return shapeLayer;
+}
